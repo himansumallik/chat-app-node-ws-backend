@@ -9,12 +9,16 @@ const PORT = 4000
 const app= express();
 const server = http.createServer(app)
 const __dirname = dirname(fileURLToPath(import.meta.url));
+const io = new Server(server)
 
 app.get('/', (req,res)=>{
-    res.setHeader('Content-Type','application/json')
-    res.statusCode = 200
-    res.end("Hello from the ws server")
+    res.sendFile(join(__dirname, 'public','index.html'));
 })
+
+io.on('connection', (socket) => {
+    console.log('a user connected', socket.id);
+});
+
 
 // const server = http.createServer(async (req,res)=>{
 //     res.setHeader('Content-Type','application/json')
