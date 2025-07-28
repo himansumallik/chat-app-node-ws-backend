@@ -4,7 +4,7 @@ import { Server } from 'socket.io';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
-const PORT = 4000
+const PORT = 7000
 
 const app= express();
 const server = http.createServer(app)
@@ -17,7 +17,15 @@ app.get('/', (req,res)=>{
 
 io.on('connection', (socket) => {
     console.log('a user connected', socket.id);
+    socket.on('chat-message', (msg)=>{
+        console.log("Message from frontend: ", msg)
+    })
+    socket.on('disconnect', () =>{
+        console.log('a user disconnected', socket.id)
+    })
+
 });
+
 
 
 // const server = http.createServer(async (req,res)=>{

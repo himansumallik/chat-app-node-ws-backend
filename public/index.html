@@ -25,13 +25,18 @@
     
     <script src="/socket.io/socket.io.js"></script>
     <script>
+        const socket = io();
+
         const inputMsg = document.getElementById("input");
         const msgBtn = document.getElementById("msg-btn")
         msgBtn.onclick = ((e)=>{
             e.preventDefault();
-            console.log(inputMsg.value)
+            if(inputMsg.value){
+                socket.emit('chat-message', inputMsg.value);
+                inputMsg.value = ''
+            }
         })
-        const socket = io();
+        
     </script>
 </body>
 </html>
