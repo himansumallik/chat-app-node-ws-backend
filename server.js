@@ -6,34 +6,57 @@ import { dirname, join } from 'node:path';
 
 const PORT = 7000
 
-const app= express();
+const app = express();
 const server = http.createServer(app)
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const io = new Server(server)
+const io = new Server(server);
 
-app.get('/', (req,res)=>{
-    res.sendFile(join(__dirname, 'public','index.html'));
-})
+// Store active users and their nicknames
+const users = {}; // Map socket.id to nickname
 
-io.on('connection', (socket) => {
-    //console.log('a user connected', socket.id);
-    socket.on('chat-message', (msg)=>{
-        io.emit('chat-message', msg);
-    })
-    socket.on('disconnect', () =>{
-        console.log('a user disconnected', socket.id)
-    })
-
+app.get('/', (req, res) => {
+    res.sendFile(join(__dirname, 'public', 'index.html'));
 });
 
+io.on('connection', (socket) => {
+    console.log('A user connected:', socket.id);
 
+    // 1. User Nickname and Join Notification
+    socket.on('set-nickname', (nickname) => {
+        users[socket.id] = nickname;
+        console.log(`User ${socket.id} set nickname to: ${nickname}`);
+        // Notify all users about the new joiner
+        io.emit('user-joined', nickname);
+        // Optionally, send current user list to the new user
+        socket.emit('current-users', Object.values(users));
+    });
 
-// const server = http.createServer(async (req,res)=>{
-//     res.setHeader('Content-Type','application/json')
-//     res.statusCode = 200
-//     res.end("Hello from the ws server")
-// })
+    // 2. Chat Message with Nickname
+    socket.on('chat-message', (msg) => {
+        const nickname = users[socket.id] || 'Anonymous'; // Get nickname, default to Anonymous
+        console.log(`Message from ${nickname} (${socket.id}): ${msg}`);
+        io.emit('chat-message', { nickname: nickname, message: msg });
+    });
 
-server.listen(PORT, ()=>{
-    console.log(`Server is running on port ${PORT}`)
-})
+    // 3. Typing Indicator
+    socket.on('typing', (isTyping) => {
+        const nickname = users[socket.id] || 'Anonymous';
+        // Broadcast to everyone *except* the sender
+        socket.broadcast.emit('user-typing', { nickname: nickname, isTyping: isTyping });
+    });
+
+    // 4. Disconnect (User Leave Notification)
+    socket.on('disconnect', () => {
+        const nickname = users[socket.id];
+        console.log('A user disconnected:', socket.id);
+        if (nickname) {
+            delete users[socket.id]; // Remove user from our list
+            io.emit('user-left', nickname); // Notify all users
+            console.log(`User ${nickname} (${socket.id}) disconnected.`);
+        }
+    });
+});
+
+server.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
+});
