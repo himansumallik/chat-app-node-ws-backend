@@ -18,6 +18,11 @@ app.get('/', (req, res) => {
     res.sendFile(join(__dirname, 'public', 'index.html'));
 });
 
+// Function to emit the updated user list to all clients
+function emitUserList() {
+    io.emit('update-user-list', Object.values(users));
+}
+
 io.on('connection', (socket) => {
     console.log('A user connected:', socket.id);
 
@@ -27,8 +32,8 @@ io.on('connection', (socket) => {
         console.log(`User ${socket.id} set nickname to: ${nickname}`);
         // Notify all users about the new joiner
         io.emit('user-joined', nickname);
-        // Optionally, send current user list to the new user
-        socket.emit('current-users', Object.values(users));
+        // Emit updated user list after a new user joins
+        emitUserList();
     });
 
     // 2. Chat Message with Nickname
@@ -52,9 +57,15 @@ io.on('connection', (socket) => {
         if (nickname) {
             delete users[socket.id]; // Remove user from our list
             io.emit('user-left', nickname); // Notify all users
+            // Emit updated user list after a user leaves
+            emitUserList();
             console.log(`User ${nickname} (${socket.id}) disconnected.`);
         }
     });
+
+    // When a new client connects, immediately send them the current user list
+    // This handles cases where a user joins an already populated chat
+    socket.emit('update-user-list', Object.values(users));
 });
 
 server.listen(PORT, () => {
